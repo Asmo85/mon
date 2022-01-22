@@ -1,0 +1,144 @@
+version: '3.3'
+
+services:
+
+  blackbox:
+    image: prom/blackbox-exporter
+    hostname: blackbox-exporter
+    restart: always
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+    volumes:
+      - ./conf/blackbox-exporter.yml:/etc/blackbox_exporter/config.yml:ro
+
+  node-exporter:
+    image: prom/node-exporter
+    hostname: prometheus
+    restart: always
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+
+  prometheus:
+    image: prom/prometheus
+    hostname: prometheus
+    restart: always
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+    command:
+      - '--storage.tsdb.retention=90d'
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+      - '--web.external-url=http://0.0.0.0:9090/h0bgdwM8tZJOgHMfZhmV/'
+#    ports:
+#      - 9090:9090
+    volumes:
+      - ./conf/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./.tsdb:/prometheus:rw
+      - ./conf/alert.rules:/etc/prometheus/alert.rules:ro
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
+      - ./conf/prom_file_sd_configs:/etc/prometheus/prom_file_sd_configs:ro
+
+  grafana:
+    image: grafana/grafana
+    hostname: grafana
+    restart: always
+    depends_on:
+      - prometheus
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+    environment:
+      - GF_PATHS_PROVISIONING=/etc/grafana/provisioning
+      - GF_SECURITY_ADMIN_PASSWORD=you_pass
+    volumes:
+      - ./.grafana:/var/lib/grafana:rw
+      - ./conf/grafana:/mnt:ro
+      - ./conf/grafana/:/etc/grafana/provisioning/:ro 
+
+  alertmanager:
+    image: prom/alertmanager
+#    ports:
+#      - 9093:9093
+    hostname: alertmanager
+    restart: always
+    command: 
+      - "--config.file=/etc/alertmanager/alertmanager.yml"
+      - "--storage.path=/alertmanager" 
+#      - "--web.external-url=http://0.0.0.0:9093/OB4W6T5OZbbRmLuVTouK/"
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+    volumes:
+      - ./conf/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+
+  proxy:
+    image: fduchara/prom-proxy-proxy:1
+    restart: always
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+    environment:
+      - LISTENADDRESS=:8080
+      - LOGLEVEL=error
+
+  nginx:
+    image: umputun/nginx-le:latest
+    hostname: nginx
+    restart: always
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+    volumes:
+      - ./conf/ssl:/etc/nginx/ssl
+      - ./conf/service-mon.conf:/etc/nginx/service-mon.conf
+      - ./conf/service-proxy.conf:/etc/nginx/service-proxy.conf
+    ports:
+      - "80:80"
+      - "443:443"
+      - "8080:8080"
+    environment:
+      - TZ=Europe/Moscow
+      - LETSENCRYPT=true
+      - LE_EMAIL=
+      - LE_FQDN=
+
+  tgalert-bot:
+    image: fduchara/tg-alert-bot:1
+    hostname: tgbot
+#    ports:
+#      - 9087:9087
+    restart: always
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+    volumes:
+      - ./conf/bot.yml:/config.yaml:ro
+      - ./conf/bot.tmpl:/default.tmpl:ro
+    command:
+      - './prometheus_bot'

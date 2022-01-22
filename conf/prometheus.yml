@@ -1,0 +1,169 @@
+global:
+  scrape_interval:     15s
+  evaluation_interval: 30s
+  scrape_timeout: 15s
+
+alerting:
+  alertmanagers:
+  - static_configs:
+    - targets:
+      - alertmanager:9093
+
+rule_files:
+  - "alert.rules"
+
+scrape_configs:
+
+  - job_name: sd
+    proxy_url: http://proxy:8080/
+    file_sd_configs:
+    - files:
+      - 'prom_file_sd_configs/*.json'
+      - 'prom_file_sd_configs/*.yml'
+
+  - job_name: 'prometheus'
+    metrics_path: /h0bgdwM8tZJOgHMfZhmV/metrics
+    static_configs:
+      - targets: 
+          - localhost:9090
+        labels:
+          team: monitoring
+          env: prod
+          programm: prometheus
+          location: 
+
+  - job_name: 'grafana'
+    static_configs:
+      - targets: 
+          - grafana:3000
+        labels:
+          team: monitoring
+          env: prod
+          programm: grafana
+          location: 
+
+  - job_name: 'node_exporter'
+    static_configs:
+      - targets:
+        - node-exporter:9100
+        labels:
+          team: monitoring
+          env: prod
+          programm: node_exporter
+          location:
+
+  - job_name: 'blackbox'
+    metrics_path: /probe
+    params:
+      module: [http_2xx]  # Look for a HTTP 200 response.
+    static_configs:
+
+      - targets:
+          - https://target.ru
+        labels:
+          env: prod
+          team:
+          programm: www
+          location:
+          ip_addr: 
+
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: blackbox:9115
+
+  - job_name: 'blackbox-redir'
+    scrape_interval: 5m
+    metrics_path: /probe
+    params:
+      module: [http_2xx]  # Look for a HTTP 200 response.
+    static_configs:
+
+      - targets:
+          - https:target.ru
+        labels:
+          env: prod
+          team:
+          programm: www-redirect
+          location:
+          ip_addr:
+
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: blackbox:9115
+
+
+  - job_name: 'blackbox_tcp'
+    metrics_path: /probe
+    params:
+      module: [tcp]
+    static_configs:
+
+      - targets:
+          - target.ru:60321
+        labels:
+          state:
+          team: 
+          location: 
+          programm: ssh
+
+      - targets:
+          - 6.3.1.7:443
+        labels:
+          state: prod
+          team:
+          programm: openvpn
+
+      - targets:
+          - target.ru:1080
+        labels:
+          state: prod
+          team: 
+          location:
+          programm: proxy
+
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: blackbox:9115
+
+  - job_name: 'blackbox_icmp'
+    metrics_path: /probe
+    params:
+      module: [icmp]
+    static_configs:
+      - targets:
+          - 192.168.2.2
+        labels:
+          state: prod
+          team: 
+          location: 
+          programm: ping
+
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: blackbox:9115
+
+  - job_name: 'redis_exporter_proxy'
+    proxy_url: http://proxy:8080/
+    static_configs:
+      - targets:
+          - target.ru:9121
+        labels:
+          env: prod
+          location: 
+          programm: redis

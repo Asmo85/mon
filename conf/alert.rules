@@ -1,0 +1,121 @@
+  groups:
+    - name: blackbox_exporter
+      rules:
+      - alert: SSLCertExpiringSoon
+        expr: probe_ssl_earliest_cert_expiry{job="blackbox"} - time() < 86400 * 7
+        for: 1h
+        labels:
+          severity: "warning"
+        annotations:
+          message: "SSL expire alert SSL certificate for the {{ $labels.instance }} will expire soon! {{ humanizeDuration $value }}"
+
+      - alert: SSLCertUpdate
+        expr: probe_ssl_earliest_cert_expiry{job="blackbox"} - time() < 86400 * 1
+        for: 1h
+        labels:
+          severity: "critical"
+        annotations:
+          message: "SSL expire alert SSL certificate for the {{ $labels.instance }} will expire soon! {{ humanizeDuration $value }}"
+
+      - alert: SSLCertUpdate
+        expr: (probe_ssl_earliest_cert_expiry offset 1h) < probe_ssl_earliest_cert_expiry
+        for: 1h
+        labels:
+          severity: "info"
+        annotations:
+          message: "Update SSL certificate for the {{ $labels.instance }} {{ humanizeDuration $value }}"
+
+      - alert: EndpointDown
+        expr: probe_success{job="blackbox",instance!="https://spas-extreme.ru"} == 0
+        for: 30s
+        labels:
+          severity: "critical"
+        annotations:
+          message: "Endpoint {{ $labels.instance }} down"
+
+      - alert: ProbeDuration
+        expr: probe_duration_seconds{job="blackbox",instance!="https://spas-extreme.ru"} > 10
+        for: 30s
+        labels:
+          severity: "warning"
+        annotations:
+          message: "Probe duration more than 10s: {{ $labels.instance }} {{ humanizeDuration $value }}"
+
+    - name: node_resources
+      rules:
+      - alert: InstanceDown
+        expr: up == 0
+        for: 30s
+        labels:
+          severity: "critical"
+        annotations:
+          message: "Instance {{ $labels.instance }} of job {{ $labels.job }} has been down."
+
+      - alert: InstanceReboot
+        expr: rate(node_boot_time_seconds[15m]) > 0.1
+        for: 15s
+        labels:
+          severity: critical
+        annotations:
+          message: "Instance {{ $labels.instance }} has been Reboot."
+
+      - alert: HostCPUUtilisation
+        expr:  100 - (avg by(instance) (irate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 95
+        for: 5m
+        labels:
+          severity: "critical"
+        annotations:
+          message: 'High CPU utilisation detected for instance {{ $labels.instance }}
+          the utilisation is currently: {{ humanize $value }}%'
+
+      - alert: HostCPUIowait
+        expr: (avg by(instance) (irate(node_cpu_seconds_total{mode="iowait"}[5m])) * 100) > 50
+        for: 5m
+        labels:
+          severity: "critical"
+        annotations:
+          message: 'High input/output system utilisation detected for instance {{ $labels.instance }}
+          the utilisation is currently: {{ humanize $value }}%'
+
+      - alert: HostMemoryUsage
+        expr: 100 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes * 100) > 95
+        for: 5m
+        labels:
+          severity: "critical"
+        annotations:
+          message: 'High memory usage detected for instance {{ $labels.instance }} 
+          the utilisation is currently: {{ humanize $value }}%'
+
+      - alert: HostDiskUsage
+        expr: (100 - (node_filesystem_avail_bytes{device=~"/dev/.+"} / node_filesystem_size_bytes{device=~"/dev/.+"}) * 100 > 95) AND (node_filesystem_avail_bytes{device=~"/dev/.+"} < 10*1024*1024*1024)
+        for: 5m
+        labels:
+          severity: "critical"
+        annotations:
+          message: 'High disk usage detected for instance {{ $labels.instance }} and mountpoint {{ $labels.mountpoint }}
+          the utilisation is currently: {{ humanize $value }}%'
+
+    - name: elasticsearch
+      rules:
+      - record: elasticsearch_filesystem_data_used_percent
+        expr: 100 * (elasticsearch_filesystem_data_size_bytes - elasticsearch_filesystem_data_free_bytes) / elasticsearch_filesystem_data_size_bytes
+      - record: elasticsearch_filesystem_data_free_percent
+        expr: 100 - elasticsearch_filesystem_data_used_percent
+
+#      - alert: ElasticsearchTooFewNodesRunning
+#        expr: elasticsearch_cluster_health_number_of_nodes < 3
+#        for: 5m
+#        labels:
+#          severity: critical
+#        annotations:
+#          description: There are only {{$value}} < 3 ElasticSearch nodes running
+#          summary: ElasticSearch running on less than 3 nodes
+
+      - alert: ElasticsearchHeapTooHigh
+        expr: elasticsearch_jvm_memory_used_bytes{area="heap"} / elasticsearch_jvm_memory_max_bytes{area="heap"} > 0.9
+        for: 15m
+        labels:
+          severity: critical
+        annotations:
+          description: The heap usage is over 90% for 15m
+          summary: ElasticSearch node {{$labels.node}} heap usage is high

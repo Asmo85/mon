@@ -1,0 +1,35 @@
+
+{{- if eq .Status "firing" -}}
+<b>Status:      🔥 {{.Status | str_UpperCase}} 🔥</b>
+{{ if .CommonLabels.severity }}
+{{- if eq .CommonLabels.severity "critical" -}}
+<b>Severity: </b> ‼️  {{ .CommonLabels.severity | str_UpperCase }} ‼️
+{{- else if eq .CommonLabels.severity "warning" -}}
+<b>Severity: </b> ⚠️  {{ .CommonLabels.severity | str_UpperCase }} ⚠️
+{{- else  if eq .CommonLabels.severity "info" -}}
+<b>Severity: </b> ℹ️  {{ .CommonLabels.severity | str_UpperCase }} ℹ️
+{{- else -}}
+<b>Severity: </b> ❔ not defined❔
+{{ end }}
+{{ else }}
+Key not found
+{{ end }}
+{{- end -}}
+{{ if eq .Status "resolved" -}}
+<b>Status: ✅ {{.Status | str_UpperCase}} ✅</b>
+{{- end }}
+
+{{ range $key,$val := .CommonLabels -}}
+{{- if or (eq $key "job") (eq $key "instance") (eq $key "severity") -}}
+{{ else -}}
+{{ $key }}: <code>{{ $val }}</code>
+{{ end -}}
+{{- end -}}
+
+{{- range $index,$alert := .Alerts -}}
+{{- range $key,$val := $alert.Annotations }}
+{{$key}}: <code>{{ $val }}</code>
+{{- end -}}
+{{- end -}}
+
+

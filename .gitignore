@@ -1,0 +1,9 @@
+
+/.tsdb/*
+!/.tsdb/.keep
+
+/.grafana/*
+!/.grafana/.keep
+
+/conf/prom_file_sd_configs/*
+!/conf/prom_file_sd_configs/.keep

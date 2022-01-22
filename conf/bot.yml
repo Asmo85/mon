@@ -1,0 +1,7 @@
+
+telegram_token: "BOT-token"
+template_path: "/default.tmpl"
+time_zone: "Europe/Moscow"
+time_outdata: "2006/01/02 15:04:05"
+split_token: "|"
+split_msg_byte: 4000

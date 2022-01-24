@@ -22,7 +22,7 @@ scrape_configs:
       - 'prom_file_sd_configs/*.yml'
 
   - job_name: 'prometheus'
-    metrics_path: /h0bgdwM8tZJOgHMfZhmV/metrics
+    metrics_path: /metrics
     static_configs:
       - targets: 
           - localhost:9090
